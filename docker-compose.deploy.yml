@@ -1,7 +1,7 @@
 services:
   mongodb:
     image: mongo:latest
-    container_name: ${COMPOSE_PROJECT_NAME:-mern}_mongodb
+    container_name: 04-09-2026-s_mongodb
     restart: always
     expose:
       - "27017"
@@ -12,15 +12,15 @@ services:
 
   backend:
     image: ${BACKEND_IMAGE:-mern-backend:latest}
-    container_name: ${COMPOSE_PROJECT_NAME:-mern}_backend
+    container_name: 04-09-2026-s_backend
     restart: always
     ports:
-      - "${PORT:-5000}:5000"
+      - "5050:5000"
     environment:
-      PORT: ${PORT:-5000}
-      MONGO_URI: ${MONGO_URI:-mongodb://mongodb:27017/ecommerce}
-      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
-      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 5000
+      MONGO_URI: mongodb://mongodb:27017/ecommerce
+      CLIENT_URL: http://167.172.77.230:5173
+      NODE_ENV: production
     depends_on:
       - mongodb
     networks:
@@ -28,12 +28,12 @@ services:
 
   frontend:
     image: ${FRONTEND_IMAGE:-mern-frontend:latest}
-    container_name: ${COMPOSE_PROJECT_NAME:-mern}_frontend
+    container_name: 04-09-2026-s_frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "5173:5173"
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
+      VITE_API_BASE_URL: http://167.172.77.230:5050/api
     depends_on:
       - backend
     networks:
