@@ -34,3 +34,11 @@ Frontend runs on `http://localhost:5173`.
 - **Architecture**:
   - Controller-Service-Model MVC pattern for backend
   - Feature-oriented directory structure for frontend
+
+## CI/CD & Environments
+This project includes GitHub Actions CI/CD pipelines supporting three environments:
+- **`qa`**: Automated testing and deployment for QA validation.
+- **`staging`**: Pre-production staging environment.
+- **`main`**: Production release with deployment protection rules.
+
+See the complete setup and configuration instructions in [CI/CD Guide](docs/CI_CD_GUIDE.md).
