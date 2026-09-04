@@ -137,12 +137,15 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: BACKEND_IMAGE,FRONTEND_IMAGE,DEPLOY_PATH,GITHUB_ACTOR,GITHUB_TOKEN
+          envs: BACKEND_IMAGE,FRONTEND_IMAGE,DEPLOY_PATH,GITHUB_ACTOR,GITHUB_TOKEN,GITHUB_REPOSITORY,GITHUB_REF_NAME
           script: |
             TARGET_DIR="${DEPLOY_PATH:-$HOME/ecommerce}"
             echo "Deploying to ${TARGET_DIR} on $(hostname)..."
             mkdir -p "${TARGET_DIR}"
             cd "${TARGET_DIR}"
+
+            # Sync latest docker-compose.deploy.yml from repository
+            curl -s -f -O "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/docker-compose.deploy.yml" || true
 
             # Log into GitHub Container Registry
             echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
