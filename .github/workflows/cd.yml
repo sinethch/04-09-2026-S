@@ -118,32 +118,54 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Execute Deployment
+      - name: Deploy to Remote Server via SSH
+        if: ${{ secrets.SSH_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: BACKEND_IMAGE,FRONTEND_IMAGE,DEPLOY_PATH,GITHUB_ACTOR,GITHUB_TOKEN
+          script: |
+            TARGET_DIR="${DEPLOY_PATH:-$HOME/ecommerce}"
+            echo "Deploying to ${TARGET_DIR} on $(hostname)..."
+            mkdir -p "${TARGET_DIR}"
+            cd "${TARGET_DIR}"
+
+            # Log into GitHub Container Registry
+            echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+
+            # Export image coordinates
+            export BACKEND_IMAGE="${BACKEND_IMAGE}"
+            export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
+
+            # Deploy services
+            if [ -f "docker-compose.deploy.yml" ]; then
+              docker compose -f docker-compose.deploy.yml pull
+              docker compose -f docker-compose.deploy.yml up -d --remove-orphans
+            elif [ -f "docker-compose.yml" ]; then
+              docker compose pull
+              docker compose up -d --remove-orphans
+            else
+              echo "Warning: No docker-compose file found in ${TARGET_DIR}."
+            fi
+
+            # Prune old unused images
+            docker image prune -af --filter "until=24h" || true
+            echo "Deployment on $(hostname) successfully completed!"
         env:
-          TARGET_ENV: ${{ needs.determine-environment.outputs.environment }}
-          IMAGE_TAG: ${{ needs.determine-environment.outputs.image_tag }}
           BACKEND_IMAGE: ${{ needs.build-and-publish.outputs.backend_image }}
           FRONTEND_IMAGE: ${{ needs.build-and-publish.outputs.frontend_image }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          PORT: ${{ vars.PORT || '5000' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remote Deployment Notice
+        if: ${{ secrets.SSH_HOST == '' }}
         run: |
-          echo "========================================================"
-          echo "Deploying to Environment: ${TARGET_ENV}"
-          echo "Commit SHA: ${{ github.sha }}"
-          echo "Backend Image: ${BACKEND_IMAGE}"
-          echo "Frontend Image: ${FRONTEND_IMAGE}"
-          echo "========================================================"
-          
-          # Deployment execution logic:
-          # If DEPLOY_HOST is configured, deploy commands can be sent via SSH or container runner
-          if [ -n "${DEPLOY_HOST}" ]; then
-            echo "Deploying to remote host ${DEPLOY_HOST}..."
-            # Example:
-            # ssh user@${DEPLOY_HOST} "docker compose pull && docker compose up -d"
-          else
-            echo "Standard CI/CD execution: Target environment ${TARGET_ENV} artifacts published successfully."
-          fi
+          echo "Notice: SSH_HOST secret is not configured yet. Artifacts published to GHCR successfully."
+          echo "To enable automated remote deployment, add SSH_HOST, SSH_USER, SSH_KEY, and DEPLOY_PATH to repository secrets."
 
       - name: Deployment Verification & Smoke Test
         run: |
