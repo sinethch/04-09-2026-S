@@ -118,8 +118,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check SSH Configuration
+        id: check-ssh
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "has_ssh=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_ssh=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to Remote Server via SSH
-        if: ${{ secrets.SSH_HOST != '' }}
+        if: steps.check-ssh.outputs.has_ssh == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -162,7 +173,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remote Deployment Notice
-        if: ${{ secrets.SSH_HOST == '' }}
+        if: steps.check-ssh.outputs.has_ssh != 'true'
         run: |
           echo "Notice: SSH_HOST secret is not configured yet. Artifacts published to GHCR successfully."
           echo "To enable automated remote deployment, add SSH_HOST, SSH_USER, SSH_KEY, and DEPLOY_PATH to repository secrets."
