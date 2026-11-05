@@ -1,58 +1,117 @@
-﻿# MERN E-Commerce Platform
+﻿# CI/CD Pipeline Practice Project
 
-A full-stack e-commerce application and DevOps portfolio project. It pairs a React and Vite storefront with an Express and MongoDB API, and demonstrates containerized delivery through GitHub Actions, Docker, and GitHub Container Registry (GHCR).
+A hands-on project built to learn and demonstrate an end-to-end CI/CD workflow from an Associate DevOps Engineer perspective. A small React and Express product-management application provides the workload; the main focus is automating validation, container builds, image publishing, and deployment across QA, staging, and main environments.
 
-> **Project focus:** Associate DevOps Engineer — CI/CD automation, container builds, environment-aware image publishing, and deployment workflow design.
+The `main` deployment shown below completed successfully, and the application was opened from the deployed server.
 
-## Application Preview
+## Deployment Evidence
 
-| Product catalog | Product management |
-|:---:|:---:|
-| ![E-commerce application screenshot 1](Screenshot%20(2).png) | ![E-commerce application screenshot 2](Screenshot%20(3).png) |
+### Successful GitHub Actions deployment to `main`
 
-## What’s Implemented
+The workflow completed its environment selection, container image build and publish, and deployment job successfully. The run summary records the commit and the backend and frontend image tags published to GHCR.
 
-### Application
-- React 18 and Vite frontend with product catalog, search, category filtering, and product details.
-- Express API backed by MongoDB and Mongoose, with product create, read, update, and delete endpoints.
-- Health endpoint at `GET /api/health`.
-- Modular backend organization using routes, controllers, services, and models.
+![Successful GitHub Actions CD workflow run for main](Screenshot%20(2).png)
 
-### DevOps and delivery
-- Separate Docker images for the frontend and backend, built from Node.js 20 Alpine base images.
-- Docker Compose setup for running the app and MongoDB locally.
-- GitHub Actions CI on pull requests to `qa`, `staging`, and `main`, and pushes to `feature/**`, `fix/**`, and `hotfix/**` branches.
-- CI installs locked dependencies, checks backend JavaScript syntax, builds the frontend, and verifies both Docker images build.
-- GitHub Actions CD on pushes to `qa`, `staging`, or `main`, with an option to start a workflow manually.
-- Environment-tagged frontend and backend images published to GHCR, using both commit-specific and `*-latest` tags.
-- Optional remote deployment over SSH when the deployment secrets are configured.
+### Application running on the deployed host
 
-## Architecture
+The product-management application was opened using the server address after deployment.
+
+![Product management application running on the deployed host](Screenshot%20(3).png)
+
+## What This Project Demonstrates
+
+- **Continuous integration:** GitHub Actions runs on pull requests targeting `qa`, `staging`, and `main`, and on pushes to `feature/**`, `fix/**`, and `hotfix/**` branches.
+- **Application checks:** CI installs dependencies with `npm ci`, runs the backend's current syntax-check script, and creates a frontend production build.
+- **Container validation:** CI builds both Docker images without publishing them.
+- **Continuous delivery:** Pushes to `qa`, `staging`, and `main` start the CD workflow; manual runs can select an environment.
+- **Image publishing:** The workflow authenticates to GHCR with `GITHUB_TOKEN` and publishes backend and frontend images with environment and commit-specific tags, plus environment `latest` tags.
+- **Deployment workflow:** The deployment job targets the matching GitHub Environment. When SSH deployment secrets are configured, it connects to the host, pulls the images, and runs Docker Compose. The successful run captured above reached a successful deployment job, and the application screenshot shows the app running on the host.
+- **Operational hygiene:** Workflow concurrency is configured, registry permissions are scoped to package publishing, and example environment files are provided without real credentials.
+
+## Delivery Flow
 
 ```text
-React + Vite frontend  ──HTTP──>  Express API  ──>  MongoDB
-         │                            │
-  Docker image                  Docker image
-         └────────── GitHub Actions ──┘
-                CI → build/publish to GHCR → optional SSH deploy
+Pull request / feature branch
+             │
+             ▼
+  Backend syntax check + frontend build
+             │
+             ▼
+  Build backend and frontend images
+             │
+             ▼
+Push to qa / staging / main (or manual run)
+             │
+             ▼
+  Build and publish environment-tagged images to GHCR
+             │
+             ▼
+  Deploy with Docker Compose over SSH
+             │
+             ▼
+  Application available on the deployment host
 ```
 
-The repository includes additional auth, cart, and order module files. The current Express app mounts the product API, and the current frontend router renders the product page; the modules not yet wired into those routes are not presented here as completed user-facing flows.
+## Application Workload
+
+The application is a small product-management interface used to exercise the delivery pipeline:
+
+- React 18 and Vite frontend with product listing, name search, category filtering, and add, edit, and delete actions.
+- Node.js 20 and Express API with product CRUD endpoints and a health endpoint at `GET /api/health`.
+- MongoDB persistence through Mongoose.
+- Separate backend and frontend Dockerfiles, plus Compose files for local development and deployment.
+
+The repository contains additional authentication, cart, and order modules, but those modules are not mounted in the current Express app or frontend router. The current running application flow is product management.
+
+## Technology Used
+
+| Area | Tools |
+|:--|:--|
+| CI/CD | GitHub Actions |
+| Containers | Docker, Docker Compose |
+| Container registry | GitHub Container Registry (GHCR) |
+| Frontend | React 18, Vite |
+| API | Node.js 20, Express 4 |
+| Database | MongoDB, Mongoose |
+| Environments | QA, staging, main |
+
+## CI and CD Configuration
+
+### Continuous integration
+
+Defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+1. Backend job uses Node.js 20, installs locked dependencies, and runs `npm test` (currently `node --check src/server.js`).
+2. Frontend job installs locked dependencies and runs `npm run build`.
+3. Docker job builds backend and frontend images as validation; it does not push them.
+
+### Continuous delivery
+
+Defined in [`.github/workflows/cd.yml`](.github/workflows/cd.yml):
+
+- Pushes to `qa`, `staging`, and `main` select the corresponding environment. A manual workflow run also allows choosing one.
+- Images are published using tags such as `<environment>-<short-sha>` and `<environment>-latest`.
+- Image names follow `ghcr.io/<owner>/<repository>/backend` and `ghcr.io/<owner>/<repository>/frontend`.
+- SSH deployment uses `SSH_HOST`, `SSH_USER`, `SSH_KEY`, and optionally `SSH_PORT` and `DEPLOY_PATH`. Configure them as repository or environment secrets to deploy to a remote host.
+- Without `SSH_HOST`, the workflow publishes images but skips remote deployment. GitHub Environment approval rules and branch restrictions must be configured in repository settings if desired.
+
+For the full setup and deployment configuration, see the [CI/CD guide](docs/CI_CD_GUIDE.md). The `.env.qa.example`, `.env.staging.example`, and `.env.main.example` files are configuration examples; use real environment-specific values outside source control.
 
 ## Run Locally
 
-### Prerequisites
-- Node.js 20 or later and npm
-- MongoDB, running locally or available through a connection string
+### Requirements
 
-### Start the backend
+- Node.js 20 or later and npm
+- MongoDB locally or a MongoDB connection string
+
+### Start the API
 
 ```bash
 cd backend
 npm ci
 ```
 
-Set the backend environment variables in `backend/.env`:
+Create `backend/.env` with local values:
 
 ```env
 PORT=5000
@@ -60,13 +119,13 @@ MONGO_URI=mongodb://localhost:27017/ecommerce
 CLIENT_URL=http://localhost:5173
 ```
 
-Then run:
+Then start the API:
 
 ```bash
 npm run dev
 ```
 
-The API starts at `http://localhost:5000`. Check it at `http://localhost:5000/api/health`.
+The API is available at `http://localhost:5000`; check `http://localhost:5000/api/health` for its health response.
 
 ### Start the frontend
 
@@ -78,56 +137,35 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. The Vite development server uses `http://localhost:5000/api` as its default API base URL; set `VITE_API_BASE_URL` if your API is hosted elsewhere.
+Open `http://localhost:5173`. Vite proxies `/api` requests to the local backend.
 
-## Run with Docker Compose
+### Start the full local stack with Docker Compose
 
-From the repository root, build and start MongoDB, the API, and the frontend:
+From the repository root:
 
 ```bash
 docker compose up --build
 ```
 
-The Compose configuration exposes the frontend at `http://localhost:5173` and the API at `http://localhost:5000`. Stop the services with `Ctrl+C`, or run `docker compose down`. MongoDB data is stored in the `mongo-data` named volume.
+The frontend is available at `http://localhost:5173`, and the API at `http://localhost:5000`. MongoDB data is stored in the `mongo-data` volume.
 
-## CI/CD Environments
-
-| Environment | Branch / trigger | Image tags |
-|:--|:--|:--|
-| QA | Push to `qa`, or manual workflow selection | `qa-<short-sha>`, `qa-latest` |
-| Staging | Push to `staging`, or manual workflow selection | `staging-<short-sha>`, `staging-latest` |
-| Main | Push to `main`, or manual workflow selection | `main-<short-sha>`, `main-latest` |
-
-The CD workflow builds and pushes images to `ghcr.io/<owner>/<repository>/backend` and `ghcr.io/<owner>/<repository>/frontend`. Configure GitHub Environments and add the required deployment secrets to enable SSH deployment. Without SSH configuration, the workflow publishes the images and reports that remote deployment was skipped. Configure required reviewers and branch restrictions in GitHub Environment settings if approval gates are needed; these are repository settings rather than automatic guarantees of the workflow file.
-
-See [the CI/CD guide](docs/CI_CD_GUIDE.md) for workflow details, environment configuration, GHCR image use, and deployment setup. The `.env.qa.example`, `.env.staging.example`, and `.env.main.example` files show the expected application configuration keys; replace example values with environment-specific values and keep real secrets out of Git.
-
-## Repository Layout
+## Repository Structure
 
 ```text
-.github/workflows/    GitHub Actions CI and CD workflows
-docs/                 CI/CD setup and deployment guide
-backend/              Express API, MongoDB models, and Dockerfile
-frontend/             React/Vite app and Dockerfile
-docker-compose.yml    Local development stack
+.github/workflows/     CI and CD workflow definitions
+backend/               Express API and backend Dockerfile
+frontend/              React/Vite application and frontend Dockerfile
+docs/                  CI/CD and deployment guide
+docker-compose.yml     Local development stack
 docker-compose.deploy.yml
-                      Compose configuration for published images
+                       Deployment stack using published images
+.env.*.example         QA, staging, and main configuration examples
 ```
 
-## Technology Stack
+## Learning Outcomes
 
-- **Frontend:** React 18, Vite
-- **Backend:** Node.js 20, Express 4
-- **Database:** MongoDB, Mongoose
-- **Containers:** Docker, Docker Compose
-- **CI/CD and registry:** GitHub Actions, GitHub Container Registry
-
-## Notes
-
-- The backend `npm test` script currently performs a Node.js syntax check; it is not a comprehensive automated test suite.
-- The CI workflow validates Docker builds but does not run container integration tests.
-- Configure `CLIENT_URL`, `VITE_API_BASE_URL`, MongoDB connection strings, and deployment secrets for each target environment before deploying.
+This project gave me practical experience with CI/CD workflow design, GitHub Actions, Docker image builds, GHCR publishing, environment-specific tags, deployment secrets, and running a Compose-based application on a remote host. It also highlighted the distinction between a successful image publishing job and a completed remote deployment, and the value of confirming deployment with the running application.
 
 ---
 
-**Author:** Associate DevOps Engineer portfolio project
+**Role focus:** Associate DevOps Engineer | CI/CD, Docker, GitHub Actions, GHCR
