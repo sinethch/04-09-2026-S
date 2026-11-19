@@ -25,7 +25,7 @@ The product-management application was opened using the server address after dep
 - **Container validation:** CI builds both Docker images without publishing them.
 - **Continuous delivery:** Pushes to `qa`, `staging`, and `main` start the CD workflow; manual runs can select an environment.
 - **Image publishing:** The workflow authenticates to GHCR with `GITHUB_TOKEN` and publishes backend and frontend images with environment and commit-specific tags, plus environment `latest` tags.
-- **Deployment workflow:** The deployment job targets the matching GitHub Environment. When SSH deployment secrets are configured, it connects to the host, pulls the images, and runs Docker Compose. The successful run captured above reached a successful deployment job, and the application screenshot shows the app running on the host.
+- **Deployment workflow:** The deployment job targets the matching GitHub Environment. When SSH deployment secrets are configured, it connects to the host, pulls the images, and runs Docker Compose. The successful run captured above reached a successful deployment job, and the application screenshot shows the app running on the host. The workflow's final “health checks” step currently prints a status message; it does not make an HTTP request to the deployed application. The screenshot is separate evidence that the application was opened on the host.
 - **Operational hygiene:** Workflow concurrency is configured, registry permissions are scoped to package publishing, and example environment files are provided without real credentials.
 
 ## Delivery Flow
@@ -94,6 +94,7 @@ Defined in [`.github/workflows/cd.yml`](.github/workflows/cd.yml):
 - Image names follow `ghcr.io/<owner>/<repository>/backend` and `ghcr.io/<owner>/<repository>/frontend`.
 - SSH deployment uses `SSH_HOST`, `SSH_USER`, `SSH_KEY`, and optionally `SSH_PORT` and `DEPLOY_PATH`. Configure them as repository or environment secrets to deploy to a remote host.
 - Without `SSH_HOST`, the workflow publishes images but skips remote deployment. GitHub Environment approval rules and branch restrictions must be configured in repository settings if desired.
+- The workflow's final deployment verification step is informational only and does not perform a remote HTTP health check.
 
 For the full setup and deployment configuration, see the [CI/CD guide](docs/CI_CD_GUIDE.md). The `.env.qa.example`, `.env.staging.example`, and `.env.main.example` files are configuration examples; use real environment-specific values outside source control.
 
